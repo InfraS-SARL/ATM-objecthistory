@@ -23,9 +23,9 @@
  * 				Put some comments here
  */
 // Dolibarr environment
-$res = @include("../../main.inc.php"); // From htdocs directory
+$res = @include "../../main.inc.php"; // From htdocs directory
 if (! $res) {
-    $res = @include("../../../main.inc.php"); // From "custom" directory
+	$res = @include "../../../main.inc.php"; // From "custom" directory
 }
 
 // Libraries
@@ -39,7 +39,7 @@ $langs->loadLangs(array("admin", "objecthistory@objecthistory"));
 
 // Access control
 if (! $user->admin) {
-    accessforbidden();
+	accessforbidden();
 }
 
 // Parameters
@@ -48,33 +48,25 @@ $action = GETPOST('action', 'alpha');
 /*
  * Actions
  */
-if (preg_match('/set_(.*)/',$action,$reg))
-{
+if (preg_match('/set_(.*)/', $action, $reg)) {
 	$code=$reg[1];
 	$val = GETPOST($code);
 	if ($code == 'OBJECTHISTORY_HOOKS_ALLOWED' && !empty($val)) $val = implode(',', $val);
 
-	if (dolibarr_set_const($db, $code, $val, 'chaine', 0, '', $conf->entity) > 0)
-	{
+	if (dolibarr_set_const($db, $code, $val, 'chaine', 0, '', $conf->entity) > 0) {
 		header("Location: ".$_SERVER["PHP_SELF"]);
 		exit;
-	}
-	else
-	{
+	} else {
 		dol_print_error($db);
 	}
 }
-	
-if (preg_match('/del_(.*)/',$action,$reg))
-{
+
+if (preg_match('/del_(.*)/', $action, $reg)) {
 	$code=$reg[1];
-	if (dolibarr_del_const($db, $code, 0) > 0)
-	{
+	if (dolibarr_del_const($db, $code, 0) > 0) {
 		Header("Location: ".$_SERVER["PHP_SELF"]);
 		exit;
-	}
-	else
-	{
+	} else {
 		dol_print_error($db);
 	}
 }
@@ -87,18 +79,18 @@ llxHeader('', $langs->trans($page_name));
 
 // Subheader
 $linkback = '<a href="' . DOL_URL_ROOT . '/admin/modules.php">'
-    . $langs->trans("BackToModuleList") . '</a>';
+	. $langs->trans("BackToModuleList") . '</a>';
 print load_fiche_titre($langs->trans($page_name), $linkback);
 
 $notab = -1;
 // Configuration header
 $head = objecthistoryAdminPrepareHead();
 dol_fiche_head(
-    $head,
-    'settings',
-    $langs->trans("Module104089Name"),
+	$head,
+	'settings',
+	$langs->trans("Module104089Name"),
 	$notab,
-    "objecthistory@objecthistory"
+	"objecthistory@objecthistory"
 );
 
 // Setup page goes here
@@ -107,9 +99,9 @@ $var=false;
 print '<table class="noborder" width="100%">';
 
 
-if(!function_exists('setup_print_title')){
-    print '<div class="error" >'.$langs->trans('AbricotNeedUpdate').' : <a href="http://wiki.atm-consulting.fr/index.php/Accueil#Abricot" target="_blank"><i class="fa fa-info"></i> Wiki</a></div>';
-    exit;
+if (!function_exists('setup_print_title')) {
+	print '<div class="error" >'.$langs->trans('AbricotNeedUpdate').' : <a href="http://wiki.atm-consulting.fr/index.php/Accueil#Abricot" target="_blank"><i class="fa fa-info"></i> Wiki</a></div>';
+	exit;
 }
 
 setup_print_title("Parameters");
