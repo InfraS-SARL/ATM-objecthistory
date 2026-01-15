@@ -65,6 +65,8 @@ class ActionsObjectHistory
 
 	/**
 	 * Constructor
+	 *
+	 * @param DoliDB $db Database handler
 	 */
 	public function __construct($db)
 	{
@@ -83,38 +85,33 @@ class ActionsObjectHistory
 	/**
 	 * Overloading the doActions function : replacing the parent's function with the one below
 	 *
-	 * @param   array()         $parameters     Hook metadatas (context, etc...)
-	 * @param   CommonObject    &$object        The object to process (an invoice if you are in invoice module, a propale in propale's module, etc...)
-	 * @param   string          &$action        Current action (if set). Generally create or edit or null
+	 * @param   array         	$parameters     	Hook metadatas (context, etc...)
+	 * @param   CommonObject    $object        The object to process (an invoice if you are in invoice module, a propale in propale's module, etc...)
+	 * @param   string          $action        Current action (if set). Generally create or edit or null
 	 * @param   HookManager     $hookmanager    Hook manager propagated to allow calling another hook
 	 * @return  int                             < 0 on error, 0 on success, 1 to replace standard code
 	 */
-	function doActions($parameters, &$object, &$action, $hookmanager)
+	public function doActions($parameters, &$object, &$action, $hookmanager)
 	{
 		global $conf,$langs,$user;
 
-		$TContext = explode(':',$parameters['context']);
+		$TContext = explode(':', $parameters['context']);
 
 		$interSect = array_intersect($TContext, ObjectHistory::getTHookAllowed());
-		if (!empty($interSect))
-		{
-			if (getDolGlobalString('OBJECTHISTORY_ARCHIVE_ON_MODIFY'))
-			{
+		if (!empty($interSect)) {
+			if (getDolGlobalString('OBJECTHISTORY_ARCHIVE_ON_MODIFY')) {
 				// CommandeFournisseur = reopen
-				if ($action == 'modif' || $object->element == 'order_supplier' && $object->statut == 2 && $action == 'reopen')
-				{
+				if ($action == 'modif' || $object->element == 'order_supplier' && $object->statut == 2 && $action == 'reopen') {
 					$action = 'objecthistory_modif';
 					return 1; // on saute l'action par défaut en retournant 1, puis on affiche la pop-in dans formConfirm()
 				}
 
 				// Ask if proposal archive wanted
-				if ($action == 'objecthistory_confirm_modify')
-				{
+				if ($action == 'objecthistory_confirm_modify') {
 					// New version if wanted
 					$archive_object = GETPOST('archive_object', 'alpha');
-					if ($archive_object == 'on')
-					{
-//						TPropaleHist::archiverPropale($ATMdb, $object);
+					if ($archive_object == 'on') {
+						//                      TPropaleHist::archiverPropale($ATMdb, $object);
 						$res = ObjectHistory::archiveObject($object);
 
 						if ($res > 0) setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
@@ -132,16 +129,14 @@ class ActionsObjectHistory
 			}
 
 			// l'action "delete_archive" affiche une popin de confirmation, donc il faut garder l'arrière plan dans la version précédemment sélectionnée
-			if($action == 'confirm_view_archive' || $action == 'delete_archive')
-			{
+			if ($action == 'confirm_view_archive' || $action == 'delete_archive') {
 				$id = $object->id;
 
 				if ($object->element == 'propal') $object = new PropalHistory($this->db);
 				elseif ($object->element == 'commande') $object = new CommandeHistory($this->db);
 				elseif ($object->element == 'supplier_proposal') $object = new SupplierProposalHistory($this->db);
 				elseif ($object->element == 'order_supplier') $object = new CommandeFournisseurHistory($this->db);
-				else
-				{
+				else {
 					// Object not handled
 					return 0;
 				}
@@ -152,34 +147,29 @@ class ActionsObjectHistory
 				$version->fetch(GETPOST('idVersion'));
 				$version->unserializeObject();
 
-//				if (!empty($object->fields))
-//				{
-//					foreach ($object->fields as $key => &$val)
-//					{
-//						$val = $version->serialized_object_source->{$key};
-//					}
-//				}
-//				else
-//				{
-					foreach($version->serialized_object_source as $k => $v)
-					{
-						if ($k == 'db') continue;
-						$object->{$k} = $v;
-					}
+				//              if (!empty($object->fields))
+				//              {
+				//                  foreach ($object->fields as $key => &$val)
+				//                  {
+				//                      $val = $version->serialized_object_source->{$key};
+				//                  }
+				//              }
+				//              else
+				//              {
+				foreach ($version->serialized_object_source as $k => $v) {
+					if ($k == 'db') continue;
+					$object->{$k} = $v;
+				}
 
-					foreach($object->lines as &$line)
-					{
-						$line->description  = $line->desc;
-						$line->db = $this->db;
-						//$line->fetch_optionals();
-					}
-//				}
+				foreach ($object->lines as &$line) {
+					$line->description  = $line->desc;
+					$line->db = $this->db;
+					//$line->fetch_optionals();
+				}
+				//              }
 
 				return 1;
-
-			}
-			elseif($action == 'create_archive')
-			{
+			} elseif ($action == 'create_archive') {
 				$res = ObjectHistory::archiveObject($object);
 
 				if ($res > 0) setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
@@ -187,9 +177,7 @@ class ActionsObjectHistory
 
 				header('Location: '.$_SERVER['PHP_SELF'].'?id='.$object->id);
 				exit;
-			}
-			elseif($action == 'restore_archive')
-			{
+			} elseif ($action == 'restore_archive') {
 				$res = ObjectHistory::restoreObject($object, GETPOST('idVersion'));
 
 				if ($res > 0) setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullRestored'));
@@ -197,9 +185,7 @@ class ActionsObjectHistory
 
 				header('Location: '.$_SERVER['PHP_SELF'].'?id='.$object->id);
 				exit;
-			}
-			elseif($action == 'confirm_delete_archive')
-			{
+			} elseif ($action == 'confirm_delete_archive') {
 				$version = new ObjectHistory($this->db);
 				$version->fetch(GETPOST('idVersion'));
 
@@ -209,17 +195,22 @@ class ActionsObjectHistory
 				header('Location: '.$_SERVER['PHP_SELF'].'?id='.GETPOST('id'));
 				exit;
 			}
-
-
 		}
 
 		return 0;
 	}
-
-	function formConfirm($parameters, &$object, &$action, $hookmanager)
+	/**
+	 * Add confirmation content
+	 *
+	 * @param   array           $parameters     Hook metadatas (context, etc...)
+	 * @param   CommonObject    $object         The object to process
+	 * @param   string          $action         Current action
+	 * @param   HookManager     $hookmanager    Hook manager
+	 * @return  int                             0
+	 */
+	public function formConfirm($parameters, &$object, &$action, $hookmanager)
 	{
-		if ($action == 'objecthistory_modif' || $action == 'view_archive' || $action == 'delete_archive')
-		{
+		if ($action == 'objecthistory_modif' || $action == 'view_archive' || $action == 'delete_archive') {
 			$form = new Form($this->db);
 			$formConfirm = getFormConfirmObjectHistory($form, $object, $action);
 			$this->results = array();
@@ -230,32 +221,36 @@ class ActionsObjectHistory
 
 		return 0;
 	}
-
-	function addMoreActionsButtons($parameters, &$object, &$action, $hookmanager)
+	/**
+	 * Add more actions buttons
+	 *
+	 * @param   array           $parameters     Hook metadatas (context, etc...)
+	 * @param   CommonObject    $object         The object to process
+	 * @param   string          $action         Current action
+	 * @param   HookManager     $hookmanager    Hook manager
+	 * @return  int                             0
+	 */
+	public function addMoreActionsButtons($parameters, &$object, &$action, $hookmanager)
 	{
 		global $conf;
 
-		$TContext = explode(':',$parameters['context']);
+		$TContext = explode(':', $parameters['context']);
 
 		$interSect = array_intersect($TContext, ObjectHistory::getTHookAllowed());
-		if (!empty($interSect) && !empty($object->id))
-		{
+		if (!empty($interSect) && !empty($object->id)) {
 			$TVersion = ObjectHistory::getAllVersionBySourceId($object->id, $object->element);
 			print getHtmlListObjectHistory($object, $TVersion, $action);
 
-			if(!getDolGlobalString('OBJECTHISTORY_HIDE_VERSION_ON_TABS'))
-			{
+			if (!getDolGlobalString('OBJECTHISTORY_HIDE_VERSION_ON_TABS')) {
 				$idVersion = GETPOST('idVersion', 'int');
 
-				if (!empty($idVersion) && isset($TVersion[$idVersion]))
-				{
+				if (!empty($idVersion) && isset($TVersion[$idVersion])) {
 					$num = array_search($idVersion, array_keys($TVersion)) + 1;
 					print '<script type="text/javascript">
 							$("#id-right div.tabsElem a:first").append(" / v.'.$num.'");
 //							console.log($("#id-right div.tabsElem a:first"));
 						</script>';
-				}
-				else if(! empty($TVersion)) {
+				} elseif (! empty($TVersion)) {
 					$num = count($TVersion) + 1; // TODO voir pour afficher le bon numéro de version si on est en mode visu
 					print '<script type="text/javascript">
 							$("#id-right div.tabsElem a:first").append(" / v.'.$num.'");
@@ -268,22 +263,27 @@ class ActionsObjectHistory
 
 		return 0;
 	}
-
-	function beforePDFCreation($parameters, &$object, &$action, $hookmanager)
+	/**
+	 * Execute action before PDF creation
+	 *
+	 * @param   array           $parameters     Hook metadatas (context, etc...)
+	 * @param   CommonObject    $object         The object to process
+	 * @param   string          $action         Current action
+	 * @param   HookManager     $hookmanager    Hook manager
+	 * @return  int                             0
+	 */
+	public function beforePDFCreation($parameters, &$object, &$action, $hookmanager)
 	{
 		global $conf;
 
-		if (getDolGlobalString('OBJECTHISTORY_SHOW_VERSION_PDF'))
-		{
-			$TContext = explode(':',$parameters['context']);
+		if (getDolGlobalString('OBJECTHISTORY_SHOW_VERSION_PDF')) {
+			$TContext = explode(':', $parameters['context']);
 
 			$interSect = array_intersect($TContext, ObjectHistory::getTHookAllowed());
-			if (!empty($interSect))
-			{
+			if (!empty($interSect)) {
 				$TVersion = ObjectHistory::getAllVersionBySourceId($object->id, $object->element);
 				$num = count($TVersion);
-				if ($num > 0)
-				{
+				if ($num > 0) {
 					$this->old_object_ref = $object->ref;
 					$object->ref .='/'.($num+1);
 				}
@@ -292,13 +292,20 @@ class ActionsObjectHistory
 
 		return 0;
 	}
-
-	function afterPDFCreation($parameters, &$object, &$action, $hookmanager)
+	/**
+	 * Execute action after PDF creation
+	 *
+	 * @param   array           $parameters     Hook metadatas (context, etc...)
+	 * @param   CommonObject    $object         The object to process
+	 * @param   string          $action         Current action
+	 * @param   HookManager     $hookmanager    Hook manager
+	 * @return  int                             0
+	 */
+	public function afterPDFCreation($parameters, &$object, &$action, $hookmanager)
 	{
 		global $conf;
 
-		if (getDolGlobalString('OBJECTHISTORY_SHOW_VERSION_PDF')&& !empty($this->old_object_ref))
-		{
+		if (getDolGlobalString('OBJECTHISTORY_SHOW_VERSION_PDF')&& !empty($this->old_object_ref)) {
 			$object_src = $parameters['object'];
 			if (!empty($object_src)) $object_src->ref = $this->old_object_ref;
 			else $object->ref = $this->old_object_ref;
