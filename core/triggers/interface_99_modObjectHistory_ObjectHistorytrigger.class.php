@@ -128,7 +128,8 @@ class InterfaceObjectHistorytrigger
 				if ($res > 0) {
 					setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
 				} else {
-					setEventMessage($this->db->lasterror(), 'errors');
+					dol_syslog($this->db->lasterror(), LOG_ERR);
+					setEventMessage($langs->trans('ObjectHistoryVersionFailedArchived'), 'errors');
 				}
 			}
 			return 1;

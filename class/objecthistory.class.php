@@ -213,16 +213,16 @@ class ObjectHistory extends SeedObject
 	 */
     public static function archiveCount(int $id, string $element) :int
     {
-        global $db;
-        $sql = " SELECT count(rowid) as nb";
-        $sql.= " FROM ".$db->prefix()."objecthistory";
-        $sql.= " WHERE fk_source = ".(int) $id;
-        $sql.= " AND element_source = '".$db->escape($element)."'";
-        $resql = $db->query($sql);
-        if ($resql && ($row = $db->fetch_object($resql))) {
-           return (int) $row->nb;
-        }
-       return 0;
+		global $db;
+		$sql = " SELECT count(rowid) as nb";
+		$sql.= " FROM ".$db->prefix()."objecthistory";
+		$sql.= " WHERE fk_source = ".(int) $id;
+		$sql.= " AND element_source = '".$db->escape($element)."'";
+		$resql = $db->query($sql);
+		if ($resql && ($row = $db->fetch_object($resql))) {
+			return (int) $row->nb;
+		}
+		return 0;
     }
 
 	/**
