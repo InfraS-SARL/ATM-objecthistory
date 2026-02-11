@@ -188,17 +188,8 @@ class ObjectHistory extends SeedObject
 	{
 		global $db,$conf;
 
-		$sql = " SELECT count(*) as nb";
-		$sql.= " FROM ".MAIN_DB_PREFIX."objecthistory";
-		$sql.= " WHERE fk_source = ".$object->id;
-		$sql.= " AND element_source = '".$db->escape($object->element)."'";
-		$resql = $db->query($sql);
-
-		$nb=1;
-		if ($resql && ($row = $db->fetch_object($resql))) $nb = $row->nb + 1;
-
+		$nb = self::archiveCount($object->id, $object->element) + 1;
 		$ok = 1;
-
 		$filename = dol_sanitizeFileName($object->ref);
 
 		if ($object->element == 'propal') $filedir = $conf->propal->multidir_output[$object->entity] . "/" . $filename;
@@ -213,6 +204,26 @@ class ObjectHistory extends SeedObject
 			exec('cp "'.$filedir.'/'.$filename.'.pdf" "'.$filedir.'/'.$filename.'-'.$nb.'.pdf"');
 		}
 	}
+	/**
+	 * Count the number of archives existing for a specific object.
+	 *
+	 * @param  int    $id      Id of the source object (fk_source)
+	 * @param  string $element Type of the element (element_source, e.g., 'propal', 'commande')
+	 * @return int             Number of archived versions found
+	 */
+    public static function archiveCount(int $id, string $element) :int
+    {
+		global $db;
+		$sql = " SELECT count(rowid) as nb";
+		$sql.= " FROM ".$db->prefix()."objecthistory";
+		$sql.= " WHERE fk_source = ".(int) $id;
+		$sql.= " AND element_source = '".$db->escape($element)."'";
+		$resql = $db->query($sql);
+		if ($resql && ($row = $db->fetch_object($resql))) {
+			return (int) $row->nb;
+		}
+		return 0;
+    }
 
 	/**
 	 * Generate PDF

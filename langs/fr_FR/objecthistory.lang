@@ -56,3 +56,5 @@ ObjectHistorySelectVersion=Choix :
 ObjectHistoryRestoreArchive=Restaurer
 ObjectHistoryDeleteArchive=Supprimer cette archive
 ObjectHistoryConfirmDelete=Êtes-vous sûr de vouloir effacer cette version ?
+
+ObjectHistoryVersionFailedArchived = Erreur lors de l'archivage de la version du document
