@@ -188,7 +188,7 @@ class ObjectHistory extends SeedObject
 	{
 		global $db,$conf;
 
-        $nb = self::archiveCount($object->id, $object->element) + 1;
+		$nb = self::archiveCount($object->id, $object->element) + 1;
 		$ok = 1;
 		$filename = dol_sanitizeFileName($object->ref);
 
