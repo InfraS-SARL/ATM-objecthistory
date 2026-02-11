@@ -111,16 +111,11 @@ class ActionsObjectHistory
 					// New version if wanted
 					$archive_object = GETPOST('archive_object', 'alpha');
 					if ($archive_object == 'on') {
-						$archiveCount = ObjectHistory::archiveCount($object->id, $object->element);
-						if ($archiveCount > 0) {
-							$res = ObjectHistory::archiveObject($object);
-							if ($res > 0) {
-								setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
-							} else {
-								dol_syslog($this->db->lasterror(), LOG_ERR);
-								setEventMessage($langs->trans('ObjectHistoryVersionFailedArchived'), 'errors');
-							}
-						}
+						//                      TPropaleHist::archiverPropale($ATMdb, $object);
+						$res = ObjectHistory::archiveObject($object);
+
+						if ($res > 0) setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
+						else setEventMessage($this->db->lasterror(), 'errors');
 					}
 
 					// CommandeFournisseur = reopen
