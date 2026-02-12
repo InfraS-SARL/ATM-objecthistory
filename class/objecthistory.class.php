@@ -226,6 +226,21 @@ class ObjectHistory extends SeedObject
 		return 0;
 	}
 	/**
+	 * Archive the object only if it's not the first version
+	 *
+	 * @param  Object $object  Dolibarr object to archive
+	 * @return int             -1 if not archived (first version), 0 if error, 1 if success
+	 */
+	public static function archiveObjectWithCheck(&$object)
+	{
+		$count = self::archiveCount($object->id, $object->element);
+		if ($count <= 0) {
+			return -1; // On ignore silencieusement la première version
+		}
+
+		return self::archiveObject($object);
+	}
+	/**
 	 * Generate PDF
 	 *
 	 * @param Propal|Commande|SupplierProposal|CommandeFournisseur $object  Object source

@@ -111,15 +111,12 @@ class ActionsObjectHistory
 					// New version if wanted
 					$archive_object = GETPOST('archive_object', 'alpha');
 					if ($archive_object == 'on') {
-						$archiveCount = ObjectHistory::archiveCount($object->id, $object->element);
-						if ($archiveCount > 0) {
-							$res = ObjectHistory::archiveObject($object);
-							if ($res > 0) {
-								setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
-							} else {
-								dol_syslog($this->db->lasterror(), LOG_ERR);
-								setEventMessage($langs->trans('ObjectHistoryVersionFailedArchived'), 'errors');
-							}
+						$res = ObjectHistory::archiveObjectWithCheck($object);
+						if ($res > 0) {
+							setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
+						} elseif ($res === 0) {
+							dol_syslog($this->db->lasterror(), LOG_ERR);
+							setEventMessage($langs->trans('ObjectHistoryVersionFailedArchived'), 'errors');
 						}
 					}
 
