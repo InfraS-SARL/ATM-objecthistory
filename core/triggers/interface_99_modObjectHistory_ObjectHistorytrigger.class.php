@@ -123,12 +123,12 @@ class InterfaceObjectHistorytrigger
 
 			$langs->load('objecthistory@objecthistory');
 
-			$res = ObjectHistory::archiveObject($object);
-
+			$res = ObjectHistory::archiveObjectWithCheck($object);
 			if ($res > 0) {
 				setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
-			} else {
-				setEventMessage($this->db->lasterror(), 'errors');
+			} elseif ($res === 0) {
+				dol_syslog($this->db->lasterror(), LOG_ERR);
+				setEventMessage($langs->trans('ObjectHistoryVersionFailedArchived'), 'errors');
 			}
 
 			return 1;
