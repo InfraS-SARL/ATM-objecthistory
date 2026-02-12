@@ -78,7 +78,6 @@ class ActionsObjectHistory
 		dol_include_once('/objecthistory/config.php');
 		dol_include_once('/objecthistory/lib/objecthistory.lib.php');
 		dol_include_once('/objecthistory/class/objecthistory.class.php');
-
 		$langs->load('objecthistory@objecthistory');
 	}
 
@@ -111,11 +110,13 @@ class ActionsObjectHistory
 					// New version if wanted
 					$archive_object = GETPOST('archive_object', 'alpha');
 					if ($archive_object == 'on') {
-						//                      TPropaleHist::archiverPropale($ATMdb, $object);
-						$res = ObjectHistory::archiveObject($object);
-
-						if ($res > 0) setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
-						else setEventMessage($this->db->lasterror(), 'errors');
+						$res = ObjectHistory::archiveObjectWithCheck($object);
+						if ($res > 0) {
+							setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
+						} elseif ($res === 0) {
+							dol_syslog($this->db->lasterror(), LOG_ERR);
+							setEventMessage($langs->trans('ObjectHistoryVersionFailedArchived'), 'errors');
+						}
 					}
 
 					// CommandeFournisseur = reopen
@@ -170,11 +171,28 @@ class ActionsObjectHistory
 
 				return 1;
 			} elseif ($action == 'create_archive') {
+				// 1. On crée l'archive en base
 				$res = ObjectHistory::archiveObject($object);
 
-				if ($res > 0) setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
-				else setEventMessage($this->db->lasterror(), 'errors');
+				if ($res > 0) {
+					// 2. IMPORTANT : On recharge l'objet proprement depuis la base
+					// pour être sûr que les compteurs de version dans le hook PDF soient justes
+					// et que la référence ne soit pas déjà polluée par un calcul précédent.
+					$object->fetch($object->id);
 
+					$hidedetails = (GETPOST('hidedetails', 'int') ? GETPOST('hidedetails', 'int') : (!empty($conf->global->MAIN_GENERATE_DOCUMENTS_HIDE_DETAILS) ? 1 : 0));
+					$hidedesc = (GETPOST('hidedesc', 'int') ? GETPOST('hidedesc', 'int') : (!empty($conf->global->MAIN_GENERATE_DOCUMENTS_HIDE_DESC) ? 1 : 0));
+					$hideref = (GETPOST('hideref', 'int') ? GETPOST('hideref', 'int') : (!empty($conf->global->MAIN_GENERATE_DOCUMENTS_HIDE_REF) ? 1 : 0));
+
+					$result = $object->generateDocument($object->model_pdf, $langs, $hidedetails, $hidedesc, $hideref);
+
+					if ($result <= 0) {
+						dol_syslog("Erreur régénération PDF lors de l'archivage", LOG_ERR);
+					}
+					setEventMessage($langs->trans('ObjectHistoryVersionSuccessfullArchived'));
+				} else {
+					setEventMessage($this->db->lasterror(), 'errors');
+				}
 				header('Location: '.$_SERVER['PHP_SELF'].'?id='.$object->id);
 				exit;
 			} elseif ($action == 'restore_archive') {
