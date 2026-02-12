@@ -5,6 +5,8 @@
 
 
 ## Release 1.1
+- FIX : Prevent archive creation on first validation (added archiveCount check) - *11/02/2026* - 1.1.7
+- FIX : Compat V23 - **15/01/2026** - 1.1.6
 - FIX : FIX Warning activation module - *21/07/2025* - 1.1.5
 - FIX : DA026773 - Fixed issue where restoring a previous version of a document merged line items instead of replacing them entirely - *21/07/2025* - 1.1.4
 - FIX : DA026122 restore lines propal- **21/02/2024** - 1.1.3

@@ -53,4 +53,4 @@ ObjectHistoryRestoreArchive=Restore
 ObjectHistoryDeleteArchive=Delete this archive
 ObjectHistoryConfirmDelete=Are you sure you want to delete this version ?
 
-ObjectHistoryVersionFailedArchived = Error while archiving the document version
+ObjectHistoryVersionFailedArchived=Error while archiving the document version

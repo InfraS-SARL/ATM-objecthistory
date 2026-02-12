@@ -130,7 +130,6 @@ class InterfaceObjectHistorytrigger
 				dol_syslog($this->db->lasterror(), LOG_ERR);
 				setEventMessage($langs->trans('ObjectHistoryVersionFailedArchived'), 'errors');
 			}
-// Si $res == -1, on ne fait rien (comportement attendu)
 
 			return 1;
 		} elseif (in_array($action, array('PROPAL_DELETE', 'ORDER_DELETE', 'SUPPLIER_PROPOSAL_DELETE', 'ORDER_SUPPLIER_DELETE'))) {
