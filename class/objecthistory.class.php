@@ -139,7 +139,7 @@ class ObjectHistory extends SeedObject
 	{
 		global $db;
 
-		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'objecthistory WHERE fk_source = '.$fk_source.' AND element_source = \''.$db->escape($element_source).'\'';
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'objecthistory WHERE fk_source = '.$fk_source.' AND element_source = \''.$db->escape($element_source).'\' ORDER BY rowid ASC';
 		$resql = $db->query($sql);
 		if ($resql) {
 			$TRes = array();

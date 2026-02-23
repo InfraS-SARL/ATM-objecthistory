@@ -5,6 +5,8 @@
 
 
 ## Release 1.1
+- FEAT : Ajout du bouton "Générer les PDF des archives" pour générer `REF-V1.pdf`, `REF-V2.pdf`, etc. depuis la version courante sans quitter la V3 - *23/02/2026* - 1.1.8
+- FIX : Génération PDF depuis une archive affichée (V1/V2/...) dans `objecthistory` au lieu de régénérer la dernière version - *23/02/2026* - 1.1.8
 - FIX : Prevent archive creation on first validation (added archiveCount check) - *11/02/2026* - 1.1.7
 - FIX : Compat V23 - **15/01/2026** - 1.1.6
 - FIX : FIX Warning activation module - *21/07/2025* - 1.1.5
