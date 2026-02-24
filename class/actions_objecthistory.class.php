@@ -64,6 +64,22 @@ class ActionsObjectHistory
 	public $old_object_ref;
 
 	/**
+	 * Return archive class name from Dolibarr element key.
+	 *
+	 * @param string $element Object element
+	 * @return string
+	 */
+	protected function getClassFromElement($element)
+	{
+		if ($element === 'propal') return 'PropalHistory';
+		elseif ($element === 'commande') return 'CommandeHistory';
+		elseif ($element === 'supplier_proposal') return 'SupplierProposalHistory';
+		elseif ($element === 'order_supplier') return 'CommandeFournisseurHistory';
+
+		return '';
+	}
+
+	/**
 	 * Build a history object instance from an archived snapshot.
 	 *
 	 * @param CommonObject $object Current object
@@ -76,11 +92,10 @@ class ActionsObjectHistory
 
 		$id = $object->id;
 
-		if ($object->element == 'propal') $archiveObject = new PropalHistory($this->db);
-		elseif ($object->element == 'commande') $archiveObject = new CommandeHistory($this->db);
-		elseif ($object->element == 'supplier_proposal') $archiveObject = new SupplierProposalHistory($this->db);
-		elseif ($object->element == 'order_supplier') $archiveObject = new CommandeFournisseurHistory($this->db);
-		else return null;
+		$className = $this->getClassFromElement($object->element);
+		if (empty($className) || !class_exists($className)) return null;
+
+		$archiveObject = new $className($this->db);
 
 		$archiveObject->fetch($id);
 
@@ -133,10 +148,23 @@ class ActionsObjectHistory
 
 		$filename = dol_sanitizeFileName($object->ref);
 
-		if ($object->element == 'propal') return $conf->propal->multidir_output[$object->entity]."/".$filename;
-		elseif ($object->element == 'commande') return $conf->commande->dir_output.'/'.$filename;
-		elseif ($object->element == 'supplier_proposal') return $conf->supplier_proposal->dir_output.'/'.$filename;
-		elseif ($object->element == 'order_supplier') return $conf->fournisseur->commande->dir_output.'/'.$filename;
+		if ($object->element == 'propal') {
+			if (defined('PROP_OUTPUTDIR')) return PROP_OUTPUTDIR.'/'.$filename;
+			if (!empty($conf->propal->multidir_output) && isset($conf->propal->multidir_output[$object->entity])) return $conf->propal->multidir_output[$object->entity]."/".$filename;
+		}
+		elseif ($object->element == 'commande') {
+			if (defined('COMMANDE_OUTPUTDIR')) return COMMANDE_OUTPUTDIR.'/'.$filename;
+			if (!empty($conf->commande->dir_output)) return $conf->commande->dir_output.'/'.$filename;
+		}
+		elseif ($object->element == 'supplier_proposal') {
+			if (defined('SUPPLIER_PROPOSAL_OUTPUTDIR')) return SUPPLIER_PROPOSAL_OUTPUTDIR.'/'.$filename;
+			if (!empty($conf->supplier_proposal->dir_output)) return $conf->supplier_proposal->dir_output.'/'.$filename;
+		}
+		elseif ($object->element == 'order_supplier') {
+			// Older Dolibarr versions generally expose SUPPLIER_OUTPUTDIR for supplier docs/orders.
+			if (defined('SUPPLIER_OUTPUTDIR') && !empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
+			if (!empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
+		}
 
 		return '';
 	}
@@ -431,7 +459,7 @@ class ActionsObjectHistory
 			}
 
 			if (($action != 'confirm_view_archive' && $action != 'delete_archive') && !empty($TVersion)) {
-				print '<div class="inline-block divButAction"><a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$object->id.'&action=generate_archives_pdf&token='.newToken().'">Générer les PDF des archives</a></div>';
+				print '<div class="inline-block divButAction"><a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$object->id.'&action=generate_archives_pdf&token='.newToken().'">'.$langs->trans("GenerateArchivePDF").'</a></div>';
 			}
 
 			if ($action == 'confirm_view_archive' || $action == 'delete_archive') return 1;

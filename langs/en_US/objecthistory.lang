@@ -54,3 +54,4 @@ ObjectHistoryDeleteArchive=Delete this archive
 ObjectHistoryConfirmDelete=Are you sure you want to delete this version ?
 
 ObjectHistoryVersionFailedArchived=Error while archiving the document version
+GenerateArchivePDF=Generate PDFs of archives
