@@ -150,20 +150,20 @@ class ActionsObjectHistory
 
 		if ($object->element == 'propal') {
 			if (defined('PROP_OUTPUTDIR')) return PROP_OUTPUTDIR.'/'.$filename;
-			if (!empty($conf->propal->multidir_output) && isset($conf->propal->multidir_output[$object->entity])) return $conf->propal->multidir_output[$object->entity]."/".$filename;
+			if (!empty($conf->propal) && !empty($conf->propal->multidir_output) && isset($conf->propal->multidir_output[$object->entity])) return $conf->propal->multidir_output[$object->entity]."/".$filename;
 		}
 		elseif ($object->element == 'commande') {
 			if (defined('COMMANDE_OUTPUTDIR')) return COMMANDE_OUTPUTDIR.'/'.$filename;
-			if (!empty($conf->commande->dir_output)) return $conf->commande->dir_output.'/'.$filename;
+			if (!empty($conf->commande) && !empty($conf->commande->dir_output)) return $conf->commande->dir_output.'/'.$filename;
 		}
 		elseif ($object->element == 'supplier_proposal') {
 			if (defined('SUPPLIER_PROPOSAL_OUTPUTDIR')) return SUPPLIER_PROPOSAL_OUTPUTDIR.'/'.$filename;
-			if (!empty($conf->supplier_proposal->dir_output)) return $conf->supplier_proposal->dir_output.'/'.$filename;
+			if (!empty($conf->supplier_proposal) && !empty($conf->supplier_proposal->dir_output)) return $conf->supplier_proposal->dir_output.'/'.$filename;
 		}
 		elseif ($object->element == 'order_supplier') {
 			// Older Dolibarr versions generally expose SUPPLIER_OUTPUTDIR for supplier docs/orders.
-			if (defined('SUPPLIER_OUTPUTDIR') && !empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
-			if (!empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
+			if (defined('SUPPLIER_OUTPUTDIR') && !empty($conf->fournisseur) && !empty($conf->fournisseur->commande) && !empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
+			if (!empty($conf->fournisseur) && !empty($conf->fournisseur->commande) && !empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
 		}
 
 		return '';
@@ -227,6 +227,9 @@ class ActionsObjectHistory
 		if ($hadCurrentPdf && dol_is_file($tmpBackup)) {
 			@copy($tmpBackup, $currentPdf);
 			@unlink($tmpBackup);
+		} elseif (!$hadCurrentPdf && dol_is_file($currentPdf)) {
+			// No current PDF existed before archive rebuild: cleanup temporary file to avoid leaving Vn as current PDF.
+			@unlink($currentPdf);
 		}
 
 		if ($res > 0) return 1;
@@ -419,7 +422,7 @@ class ActionsObjectHistory
 	 */
 	public function addMoreActionsButtons($parameters, &$object, &$action, $hookmanager)
 	{
-		global $conf;
+		global $conf, $langs;
 
 		$TContext = explode(':', $parameters['context']);
 
