@@ -59,3 +59,12 @@ ObjectHistoryConfirmDelete=Êtes-vous sûr de vouloir effacer cette version ?
 
 ObjectHistoryVersionFailedArchived=Erreur lors de l'archivage de la version du document
 GenerateArchivePDF=Générer les PDF des archives
+ObjectHistoryArchiveFetchFailed=Erreur lors du chargement de l'objet archivé
+ObjectHistoryArchiveSnapshotUnavailable=Archive indisponible pour cette version
+ObjectHistoryArchiveVersionNotFound=Version d'archive introuvable
+ObjectHistoryArchiveOutputDirNotFound=Répertoire de sortie du document introuvable
+ObjectHistoryArchivePdfCopyFailed=Erreur lors de la copie du PDF d'archive
+ObjectHistoryArchivePdfGenerationFailed=Erreur lors de la génération du PDF d'archive
+ObjectHistoryNoArchiveFound=Aucune archive trouvée
+ObjectHistoryArchivePdfGeneratedCount=PDF d'archives générés : %s
+ObjectHistoryArchivePdfErrorCount=PDF d'archives en erreur : %s
