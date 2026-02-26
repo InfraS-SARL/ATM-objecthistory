@@ -54,3 +54,13 @@ ObjectHistoryDeleteArchive=Delete this archive
 ObjectHistoryConfirmDelete=Are you sure you want to delete this version ?
 
 ObjectHistoryVersionFailedArchived=Error while archiving the document version
+GenerateArchivePDF=Generate PDFs of archives
+ObjectHistoryArchiveFetchFailed=Error while loading archived object
+ObjectHistoryArchiveSnapshotUnavailable=Archive snapshot unavailable for this version
+ObjectHistoryArchiveVersionNotFound=Archive version not found
+ObjectHistoryArchiveOutputDirNotFound=Document output directory not found
+ObjectHistoryArchivePdfCopyFailed=Error while copying archive PDF
+ObjectHistoryArchivePdfGenerationFailed=Error while generating archive PDF
+ObjectHistoryNoArchiveFound=No archive found
+ObjectHistoryArchivePdfGeneratedCount=Archive PDFs generated: %s
+ObjectHistoryArchivePdfErrorCount=Archive PDFs with errors: %s

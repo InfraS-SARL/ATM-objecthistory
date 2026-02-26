@@ -64,6 +64,202 @@ class ActionsObjectHistory
 	public $old_object_ref;
 
 	/**
+	 * Return archive class name from Dolibarr element key.
+	 *
+	 * @param string $element Object element
+	 * @return string
+	 */
+	protected function getClassFromElement(string $element): string
+	{
+		if ($element === 'propal') return 'PropalHistory';
+		elseif ($element === 'commande') return 'CommandeHistory';
+		elseif ($element === 'supplier_proposal') return 'SupplierProposalHistory';
+		elseif ($element === 'order_supplier') return 'CommandeFournisseurHistory';
+
+		return '';
+	}
+
+	/**
+	 * Build a history object instance from an archived snapshot.
+	 *
+	 * @param CommonObject $object Current object
+	 * @param int          $idVersion Archive id
+	 * @return CommonObject|null
+	 */
+	protected function getArchivedObjectInstance(CommonObject $object, int $idVersion): ?CommonObject
+	{
+		global $langs;
+
+		if (empty($idVersion) || empty($object->id)) return null;
+
+		$id = $object->id;
+
+		$className = $this->getClassFromElement($object->element);
+		if (empty($className) || !class_exists($className)) return null;
+
+		$archiveObject = new $className($this->db);
+
+		if ($archiveObject->fetch($id) <= 0) {
+			$this->errors[] = $langs->trans('ObjectHistoryArchiveFetchFailed');
+			dol_syslog(__METHOD__.' archive fetch failed for class='.$className.' id='.$id, LOG_ERR);
+			return null;
+		}
+
+		$version = new ObjectHistory($this->db);
+		if ($version->fetch((int) $idVersion) <= 0) return null;
+		$version->unserializeObject();
+
+		if (empty($version->serialized_object_source) || !is_object($version->serialized_object_source)) {
+			$this->errors[] = $langs->trans('ObjectHistoryArchiveSnapshotUnavailable');
+			dol_syslog(__METHOD__.' serialized snapshot unavailable for version='.$idVersion, LOG_ERR);
+			return null;
+		}
+
+		foreach ($version->serialized_object_source as $k => $v) {
+			if ($k == 'db') continue;
+			$archiveObject->{$k} = $v;
+		}
+
+		if (!empty($archiveObject->lines) && is_array($archiveObject->lines)) {
+			foreach ($archiveObject->lines as &$line) {
+				$line->description = $line->desc;
+				$line->db = $this->db;
+			}
+		}
+
+		return $archiveObject;
+	}
+
+	/**
+	 * Return visual version number (V1, V2...) from archive id.
+	 *
+	 * @param CommonObject $object Current object
+	 * @param int          $idVersion Archive id
+	 * @return int
+	 */
+	protected function getArchiveVersionNumber(CommonObject $object, int $idVersion): int
+	{
+		$TVersion = ObjectHistory::getAllVersionBySourceId($object->id, $object->element);
+		if (empty($TVersion)) return 0;
+
+		$idx = array_search((int) $idVersion, array_map('intval', array_keys($TVersion)));
+		if ($idx === false) return 0;
+
+		return ((int) $idx) + 1;
+	}
+
+	/**
+	 * Get document output directory for supported objects.
+	 *
+	 * @param CommonObject $object Current object
+	 * @return string
+	 */
+	protected function getObjectOutputDir(CommonObject $object): string
+	{
+		global $conf;
+
+		$filename = dol_sanitizeFileName($object->ref);
+
+		if ($object->element == 'propal') {
+			if (defined('PROP_OUTPUTDIR')) return PROP_OUTPUTDIR.'/'.$filename;
+			if (!empty($conf->propal) && !empty($conf->propal->multidir_output) && isset($conf->propal->multidir_output[$object->entity])) return $conf->propal->multidir_output[$object->entity]."/".$filename;
+		}
+		elseif ($object->element == 'commande') {
+			if (defined('COMMANDE_OUTPUTDIR')) return COMMANDE_OUTPUTDIR.'/'.$filename;
+			if (!empty($conf->commande) && !empty($conf->commande->dir_output)) return $conf->commande->dir_output.'/'.$filename;
+		}
+		elseif ($object->element == 'supplier_proposal') {
+			if (defined('SUPPLIER_PROPOSAL_OUTPUTDIR')) return SUPPLIER_PROPOSAL_OUTPUTDIR.'/'.$filename;
+			if (!empty($conf->supplier_proposal) && !empty($conf->supplier_proposal->dir_output)) return $conf->supplier_proposal->dir_output.'/'.$filename;
+		}
+		elseif ($object->element == 'order_supplier') {
+			// Older Dolibarr versions generally expose SUPPLIER_OUTPUTDIR for supplier docs/orders.
+			if (defined('SUPPLIER_OUTPUTDIR') && !empty($conf->fournisseur) && !empty($conf->fournisseur->commande) && !empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
+			if (!empty($conf->fournisseur) && !empty($conf->fournisseur->commande) && !empty($conf->fournisseur->commande->dir_output)) return $conf->fournisseur->commande->dir_output.'/'.$filename;
+		}
+
+		return '';
+	}
+
+	/**
+	 * Generate/copy REF-Vn.pdf for an archived version while keeping current object version intact.
+	 *
+	 * @param CommonObject $object Current object (latest)
+	 * @param int          $idVersion Archive id
+	 * @return int >0 if success
+	 */
+	protected function buildArchivedPdfVersion(CommonObject $object, int $idVersion): int
+	{
+		global $langs, $hidedetails, $hidedesc, $hideref;
+
+		$num = $this->getArchiveVersionNumber($object, $idVersion);
+		if ($num <= 0) {
+			$this->errors[] = $langs->trans('ObjectHistoryArchiveVersionNotFound');
+			dol_syslog(__METHOD__.' archive version not found idVersion='.$idVersion.' objectId='.$object->id.' element='.$object->element, LOG_ERR);
+			return -1;
+		}
+
+		$filename = dol_sanitizeFileName($object->ref);
+		$filedir = $this->getObjectOutputDir($object);
+		if (empty($filedir)) {
+			$this->errors[] = $langs->trans('ObjectHistoryArchiveOutputDirNotFound');
+			dol_syslog(__METHOD__.' output directory not found objectId='.$object->id.' element='.$object->element, LOG_ERR);
+			return -1;
+		}
+
+		$sourceArchivedPdf = $filedir.'/'.$filename.'-'.$num.'.pdf';
+		$targetVersionedPdf = $filedir.'/'.$filename.'-V'.$num.'.pdf';
+
+		// Fast path: reuse archived pdf already stored by objecthistory.
+		if (dol_is_file($sourceArchivedPdf)) {
+			if (@copy($sourceArchivedPdf, $targetVersionedPdf)) return 1;
+			$this->errors[] = $langs->trans('ObjectHistoryArchivePdfCopyFailed');
+			dol_syslog(__METHOD__.' unable to copy archived PDF src='.$sourceArchivedPdf.' dst='.$targetVersionedPdf, LOG_ERR);
+			return -1;
+		}
+
+		// Fallback: rebuild from serialized snapshot, then duplicate to REF-Vn.pdf
+		$archiveObject = $this->getArchivedObjectInstance($object, $idVersion);
+		if (!is_object($archiveObject)) {
+			if (empty($this->errors)) $this->errors[] = $langs->trans('ObjectHistoryArchiveSnapshotUnavailable');
+			dol_syslog(__METHOD__.' archived snapshot unavailable idVersion='.$idVersion.' objectId='.$object->id, LOG_ERR);
+			return -1;
+		}
+
+		$currentPdf = $filedir.'/'.$filename.'.pdf';
+		$tmpBackup = $filedir.'/'.$filename.'.pdf.objecthistorybak';
+		$hadCurrentPdf = dol_is_file($currentPdf);
+		if ($hadCurrentPdf) @copy($currentPdf, $tmpBackup);
+
+		$model = GETPOST('model', 'alpha');
+		if (empty($model)) $model = !empty($archiveObject->model_pdf) ? $archiveObject->model_pdf : $object->model_pdf;
+
+		$res = $archiveObject->generateDocument($model, $langs, (int) $hidedetails, (int) $hidedesc, (int) $hideref);
+		if ($res > 0 && dol_is_file($currentPdf)) {
+			$res = @copy($currentPdf, $targetVersionedPdf) ? 1 : -1;
+			if ($res <= 0) {
+				$this->errors[] = $langs->trans('ObjectHistoryArchivePdfCopyFailed');
+				dol_syslog(__METHOD__.' unable to copy generated PDF to versioned PDF dst='.$targetVersionedPdf, LOG_ERR);
+			}
+		}
+
+		// Restore latest PDF if we temporarily overwrote it.
+		if ($hadCurrentPdf && dol_is_file($tmpBackup)) {
+			@copy($tmpBackup, $currentPdf);
+			@unlink($tmpBackup);
+		} elseif (!$hadCurrentPdf && dol_is_file($currentPdf)) {
+			// No current PDF existed before archive rebuild: cleanup temporary file to avoid leaving Vn as current PDF.
+			@unlink($currentPdf);
+		}
+
+		if ($res > 0) return 1;
+
+		$this->errors[] = $langs->trans('ObjectHistoryArchivePdfGenerationFailed');
+		dol_syslog(__METHOD__.' archived PDF generation failed idVersion='.$idVersion.' objectId='.$object->id, LOG_ERR);
+		return -1;
+	}
+
+	/**
 	 * Constructor
 	 *
 	 * @param DoliDB $db Database handler
@@ -98,6 +294,24 @@ class ActionsObjectHistory
 
 		$interSect = array_intersect($TContext, ObjectHistory::getTHookAllowed());
 		if (!empty($interSect)) {
+			$idVersion = GETPOSTINT('idVersion');
+
+			// When user generates PDF while viewing an archive, build REF-Vn.pdf from the archive instead of latest object.
+			if ($action == 'builddoc' && $idVersion > 0) {
+				$res = $this->buildArchivedPdfVersion($object, $idVersion);
+				if ($res > 0) setEventMessages($langs->trans("FileGenerated"), null);
+				else {
+					dol_syslog(__METHOD__.' archive PDF generation error idVersion='.$idVersion.' objectId='.(int) $object->id, LOG_ERR);
+					setEventMessages('', !empty($this->errors) ? $this->errors : array($langs->trans('ObjectHistoryArchivePdfGenerationFailed')), 'errors');
+				}
+
+				$action = 'confirm_view_archive';
+				$archivedObject = $this->getArchivedObjectInstance($object, $idVersion);
+				if (is_object($archivedObject)) $object = $archivedObject;
+
+				return 1;
+			}
+
 			if (getDolGlobalString('OBJECTHISTORY_ARCHIVE_ON_MODIFY')) {
 				// CommandeFournisseur = reopen
 				if ($action == 'modif' || $object->element == 'order_supplier' && $object->statut == 2 && $action == 'reopen') {
@@ -131,45 +345,11 @@ class ActionsObjectHistory
 
 			// l'action "delete_archive" affiche une popin de confirmation, donc il faut garder l'arrière plan dans la version précédemment sélectionnée
 			if ($action == 'confirm_view_archive' || $action == 'delete_archive') {
-				$id = $object->id;
-
-				if ($object->element == 'propal') $object = new PropalHistory($this->db);
-				elseif ($object->element == 'commande') $object = new CommandeHistory($this->db);
-				elseif ($object->element == 'supplier_proposal') $object = new SupplierProposalHistory($this->db);
-				elseif ($object->element == 'order_supplier') $object = new CommandeFournisseurHistory($this->db);
-				else {
-					// Object not handled
-					return 0;
+				$archivedObject = $this->getArchivedObjectInstance($object, GETPOSTINT('idVersion'));
+				if (is_object($archivedObject)) {
+					$object = $archivedObject;
+					return 1;
 				}
-
-				$object->fetch($id);
-
-				$version = new ObjectHistory($this->db);
-				$version->fetch(GETPOST('idVersion'));
-				$version->unserializeObject();
-
-				//              if (!empty($object->fields))
-				//              {
-				//                  foreach ($object->fields as $key => &$val)
-				//                  {
-				//                      $val = $version->serialized_object_source->{$key};
-				//                  }
-				//              }
-				//              else
-				//              {
-				foreach ($version->serialized_object_source as $k => $v) {
-					if ($k == 'db') continue;
-					$object->{$k} = $v;
-				}
-
-				foreach ($object->lines as &$line) {
-					$line->description  = $line->desc;
-					$line->db = $this->db;
-					//$line->fetch_optionals();
-				}
-				//              }
-
-				return 1;
 			} elseif ($action == 'create_archive') {
 				// 1. On crée l'archive en base
 				$res = ObjectHistory::archiveObject($object);
@@ -212,6 +392,30 @@ class ActionsObjectHistory
 
 				header('Location: '.$_SERVER['PHP_SELF'].'?id='.GETPOST('id'));
 				exit;
+			} elseif ($action == 'generate_archives_pdf') {
+				$TVersion = ObjectHistory::getAllVersionBySourceId($object->id, $object->element);
+				$nbOk = 0;
+				$nbKo = 0;
+
+				if (!is_array($TVersion) || empty($TVersion)) {
+					dol_syslog(__METHOD__.' no archive to generate PDF for objectId='.(int) $object->id.' element='.$object->element, LOG_INFO);
+					setEventMessages($langs->trans('ObjectHistoryNoArchiveFound'), null, 'warnings');
+				} else {
+					foreach (array_keys($TVersion) as $versionId) {
+						$res = $this->buildArchivedPdfVersion($object, (int) $versionId);
+						if ($res > 0) $nbOk++;
+						else $nbKo++;
+					}
+
+					if ($nbOk > 0) setEventMessages($langs->trans('ObjectHistoryArchivePdfGeneratedCount', $nbOk), null, 'mesgs');
+					if ($nbKo > 0) {
+						dol_syslog(__METHOD__.' archive PDF generation errors count='.$nbKo.' objectId='.(int) $object->id, LOG_ERR);
+						setEventMessages($langs->trans('ObjectHistoryArchivePdfErrorCount', $nbKo), !empty($this->errors) ? $this->errors : null, 'errors');
+					}
+				}
+
+				header('Location: '.$_SERVER['PHP_SELF'].'?id='.$object->id);
+				exit;
 			}
 		}
 
@@ -250,7 +454,7 @@ class ActionsObjectHistory
 	 */
 	public function addMoreActionsButtons($parameters, &$object, &$action, $hookmanager)
 	{
-		global $conf;
+		global $conf, $langs;
 
 		$TContext = explode(':', $parameters['context']);
 
@@ -274,6 +478,23 @@ class ActionsObjectHistory
 							$("#id-right div.tabsElem a:first").append(" / v.'.$num.'");
 						</script>';
 				}
+			}
+
+			$idVersion = GETPOSTINT('idVersion');
+			if (($action == 'confirm_view_archive' || $action == 'delete_archive') && $idVersion > 0) {
+				print '<script type="text/javascript">
+					$(function() {
+						const $form = $("#builddoc_form");
+						if (!$form.length) return;
+						if (!$form.find("input[name=\'idVersion\']").length) {
+							$form.append(\'<input type="hidden" name="idVersion" value="'.((int) $idVersion).'">\');
+						}
+					});
+				</script>';
+			}
+
+			if (($action != 'confirm_view_archive' && $action != 'delete_archive') && !empty($TVersion)) {
+				print '<div class="inline-block divButAction"><a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$object->id.'&action=generate_archives_pdf&token='.newToken().'">'.$langs->trans("GenerateArchivePDF").'</a></div>';
 			}
 
 			if ($action == 'confirm_view_archive' || $action == 'delete_archive') return 1;
