@@ -86,7 +86,7 @@ class ActionsObjectHistory
 	 * @param int          $idVersion Archive id
 	 * @return CommonObject|null
 	 */
-	protected function getArchivedObjectInstance(CommonObject $object, int $idVersion): CommonObject|null
+	protected function getArchivedObjectInstance(CommonObject $object, int $idVersion): ?CommonObject
 	{
 		global $langs;
 
